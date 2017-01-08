@@ -9,13 +9,16 @@ logger = logging.getLogger(__name__)
 
 
 def load_attempts():
-    pages = requests.get('https://devman.org/api/challenges/solution_attempts/').json()['number_of_pages']
+    page = 1
+    pages = 1
     logger.info(pages)
-    for page in range(1, pages + 1):
+    while page <= pages:
         payload = {'page': page}
         logger.info(payload)
         solution_attempts = requests.get('https://devman.org/api/challenges/solution_attempts/', params=payload).json()
+        pages = solution_attempts['number_of_pages']
         yield solution_attempts['records']
+        page += 1
 
 
 def get_attempt_time(attempt):
