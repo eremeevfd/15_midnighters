@@ -1,17 +1,28 @@
 import requests
 import pytz
 from datetime import datetime
+import logging
+
+
+logging.basicConfig(level='INFO')
+logger = logging.getLogger(__name__)
 
 
 def load_attempts():
-    pages = 1
-    for page in range(pages):
-        solution_attempts = requests.get('https://devman.org/api/challenges/solution_attempts/?page=2').json()
+    pages = requests.get('https://devman.org/api/challenges/solution_attempts/').json()['number_of_pages']
+    logger.info(pages)
+    for page in range(1, pages + 1):
+        payload = {'page': page}
+        logger.info(payload)
+        solution_attempts = requests.get('https://devman.org/api/challenges/solution_attempts/', params=payload).json()
         yield solution_attempts['records']
 
 
 def get_attempt_time(attempt):
-    return pytz.utc.localize(datetime.fromtimestamp(attempt['timestamp']))
+    try:
+        return pytz.utc.localize(datetime.fromtimestamp(attempt['timestamp']))
+    except TypeError:
+        return None
 
 
 def get_time_zone(attempt):
@@ -19,18 +30,26 @@ def get_time_zone(attempt):
 
 
 def convert_time_according_to_time_zone(attempt_time, time_zone):
-    return attempt_time.astimezone(time_zone)
+    try:
+        return attempt_time.astimezone(time_zone)
+    except AttributeError:
+        return None
 
 
 def get_midnighters():
-    midnighters = []
+    midnighters = set()
+    midnight_hour = 0
+    morning_hour = 7
     for records in solution_attempts:
         for attempt in records:
             attempt_time = get_attempt_time(attempt)
             time_zone = get_time_zone(attempt)
             attempt_time_local = convert_time_according_to_time_zone(attempt_time, time_zone)
-            if 0 < attempt_time_local.hour < 7:
-                midnighters.append(attempt['username'])
+            try:
+                if midnight_hour < attempt_time_local.hour < morning_hour:
+                    midnighters.add(attempt['username'])
+            except AttributeError:
+                pass
     return midnighters
 
 
